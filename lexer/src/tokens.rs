@@ -1,9 +1,11 @@
+#[derive(Debug, Clone)]
 pub enum Value {
     String(String),
     Int(i32),
     Float(f32),
 }
 
+#[derive(Debug, Clone)]
 pub enum TokenKind {
     // literals
     Value(Value),  // values can be pushed and popped from stack
@@ -30,11 +32,13 @@ pub enum TokenKind {
     //Cons, // constructs list from two lists
 
     // Special
-    EOF, // END OF FILE
+    EOF,     // END OF FILE
+    ILLEGAL, // illegal token
 }
 
+#[derive(Debug, Clone)]
 pub struct Token {
-    location: usize,
+    pub location: usize,
     pub kind: TokenKind,
 }
 

@@ -1,6 +1,6 @@
 pub mod tokens;
 
-use tokens::{Token, TokenKind};
+use tokens::{lookup_keyword, Token, TokenKind, Value};
 
 pub struct Lexer<'a> {
     input: &'a str,
@@ -69,9 +69,32 @@ impl<'a> Lexer<'a> {
             a => {
                 if a.is_ascii_alphabetic() {
                     let ident = self.read_identifier();
-                    match lookup_keyword(&ident) {}
+                    match lookup_keyword(ident.clone()) {
+                        Some(t) => Token {
+                            location: self.position,
+                            kind: t,
+                        },
+                        None => Token {
+                            location: self.position,
+                            kind: ident,
+                        },
+                    }
                 } else if a.is_ascii_digit() {
                     // read number
+                    match self.read_number() {
+                        Ok(num) => Token {
+                            location: self.position,
+                            kind: num,
+                        },
+                        Err(msg) => {
+                            panic!("Error parsing number: {}, line: {}", msg, self.position)
+                        }
+                    }
+                } else {
+                    Token {
+                        location: self.position,
+                        kind: TokenKind::ILLEGAL,
+                    }
                 }
             }
         }
@@ -83,6 +106,45 @@ impl<'a> Lexer<'a> {
             self.read_char();
         }
         TokenKind::Ident(self.input[position..self.position].to_owned())
+    }
+
+    fn read_number(&mut self) -> Result<TokenKind, &'static str> {
+        let position = self.position;
+        loop {
+            match self.ch {
+                b'0'..=b'9' => self.read_char(),
+                b'.' => match self.read_float(position) {
+                    Ok(f) => return Ok(f),
+                    Err(msg) => return Err(msg),
+                },
+                _ => break,
+            }
+        }
+
+        match i32::from_str_radix(&self.input[position..self.position].to_owned(), 10) {
+            Ok(val) => Ok(TokenKind::Value(Value::Int(val))),
+            Err(msg) => {
+                println!("{}", msg.to_string());
+                Err("Failed to parse integer")
+            }
+        }
+    }
+
+    fn read_float(&mut self, start_position: usize) -> Result<TokenKind, &'static str> {
+        loop {
+            match self.ch {
+                b'0'..=b'9' => self.read_char(),
+                _ => break,
+            }
+        }
+
+        match (self.input[start_position..self.position].to_owned()).parse::<f32>() {
+            Ok(f) => Ok(TokenKind::Value(Value::Float(f))),
+            Err(msg) => {
+                println!("{}", msg.to_string());
+                Err("Failed to parse float")
+            }
+        }
     }
 
     fn skip_whitespace(&mut self) {
